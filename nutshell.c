@@ -45,13 +45,14 @@ void printPrompt()
 }
 int getCommand()
 {
-    /*
-    init_scanner-and_parser();
-    if (yyparse() != 0)
-        understand_errors();
-    else
+    // init_scanner-and_parser();
+    int yyParseReturn = yyparse();
+    if (yyParseReturn == 0)
         return 1;
-        */
+    else if (yyParseReturn == 1)
+        printf("Parsing failed: Invalid input");
+    else if (yyParseReturn == 2)
+        printf("Parsing failed: Memory exhaustion").
 
 }
 void handle_errors()
