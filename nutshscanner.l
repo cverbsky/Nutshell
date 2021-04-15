@@ -22,6 +22,7 @@ bool ifAlias(char* name){
     }
     return false;
 }
+
 %}
 %array
 %option noyywrap
@@ -36,27 +37,29 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <string_condition>[\"]          {BEGIN(INITIAL);}
 
 [ ]		            { }
-ls            {return LS;}
-printenv            {return PRINTENV;}
-setenv              {return SETENV;}
-unsetenv            {return UNSETENV;}
-unalias              {return UNALIAS;}
+"|"	{ return PIPE; }
+"< "	{ return INSTREAM; }
+"2>"	{ return ERRSTREAM; }
+">"	{ return OUTSTREAM; }
+"&1"	{ return ERROUT; }
+"&"	{ return BGIND; }
 bye                 { return BYE; }
 cd		            { return CD;}
 alias		        { return ALIAS; }
 "\n"		        { return END; }
 [\"]                 { BEGIN(string_condition); }
 {CHAR}+              {if(ifAlias(yytext)) {
-                        //printf("yytext is a current alias: %s\n", yytext);
+                        printf("yytext: %s\n", yytext);
                         //source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
                            char *yycopy = strdup( subAliases(yytext) );
                            for ( int i = strlen(subAliases(yytext)) - 1; i >= 0; --i )
                                unput( yycopy[i] );
                            free( yycopy );
                     } else {
-                        //printf("yytext is not a current alias: %s\n", yytext);
+		       //printf("yytext: %s\n", yytext);
                         yylval.string = strdup(yytext);
                         return STRING;
                     };
                      }
+
 %%
