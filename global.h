@@ -20,3 +20,22 @@ struct aTable aliasTable;
 int aliasIndex, varIndex;
 
 char* subAliases(char* name);
+
+struct argList {
+        char* string;
+        struct argList* next;
+};
+
+struct cTable {
+    struct argList* args;
+    int argCount;
+    char argTable[128][100];
+    char* inputFileName;
+    char* outputFileName;
+};
+
+struct cTable commandTable;
+
+bool inputFile;
+bool outputFile;
+bool inBackground;
