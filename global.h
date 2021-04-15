@@ -30,12 +30,14 @@ struct cTable {
     struct argList* args;
     int argCount;
     char argTable[128][100];
-    char* inputFileName;
-    char* outputFileName;
 };
 
-struct cTable commandTable;
+int tblIndex;
+struct cTable commandTable[100];
 
+char* inputFileName;
+char* outputFileName;
 bool inputFile;
 bool outputFile;
 bool inBackground;
+
