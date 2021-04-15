@@ -18,6 +18,12 @@ int main()
 {
     shell_init();
 
+    if(!isatty(0))
+	{
+		//read in piped input here
+		printf("reading from a pipe\n");
+	}
+
     while(1)
     {
         printPrompt();
