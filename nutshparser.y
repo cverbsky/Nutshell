@@ -8,6 +8,7 @@
 #include <string.h>
 #include "global.h"
 #include <dirent.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -23,7 +24,7 @@ int runLS(char* arg);
 int runSetEnv(char* name, char *word);
 int runPrintEnv(void);
 int runUnsetEnv(char* name);
-int initializeCommand(void); 
+int initializeCommand(int currIndex); 
 int pipeToNext(void); 
 int addToArgList(char *word);
 int inputFileExists(char *word);
@@ -63,12 +64,14 @@ nonbuiltin_command		:
 	| pipestream io_stream background_indicator END 	{return 1; } // execute in BG (w IO)
 
 pipestream	:
-	command			{initializeCommand();}
-	| command PIPE command	{initializeCommand(); pipeToNext();} //allows infinitely chained piped commands
+	command			{initializeCommand(tblIndex); tblIndex++;}
+	| command PIPE command	{pipeToNext();} //allows infinitely chained piped commands
+	;
 
 command  :
-	command STRING		{printf("Made it here"); addToArgList($2);}
+	command STRING		{addToArgList($2);}
 	| STRING			{addToArgList($1);}
+	;
 
 io_stream	:
 	input_stream output_stream error_stream		{}
@@ -274,28 +277,32 @@ int runUnsetEnv(char* name)
 
 int addToArgList(char *word) 
 {
-	strcpy(commandTable.argTable[commandTable.argCount], word);	
-	commandTable.argCount++;
+	strcpy(commandTable[tblIndex].argTable[commandTable[tblIndex].argCount], word);	
+	commandTable[tblIndex].argCount++;
 	
 	return 1;
 }
 
-int initializeCommand()
+int initializeCommand(int currIndex)
 {
-	char* thisArgs[commandTable.argCount+1];
+	char* thisArgs[100];
 
-	if (commandTable.argTable[0][0] != '/') { // arg is relative path
-		char* path = (char*) malloc(2 + strlen(varTable.word[1]) + strlen(commandTable.argTable[0]));
+	if (commandTable[currIndex].argTable[0][0] != '/') { // arg is relative path
+		char* path = (char*) malloc(2 + strlen(varTable.word[1]) + strlen(commandTable[currIndex].argTable[0]));
 		strcpy(path, varTable.word[1]);
 		strcat(path, "/");
-		strcat(path, commandTable.argTable[0]);
+		strcat(path, commandTable[currIndex].argTable[0]);
 		printf("%s", path);
 	
+		thisArgs[0] = (char*) malloc(sizeof(path));
 		strcpy(thisArgs[0], path);
-		for (int i = 1; i < commandTable.argCount; i++)
-			strcpy(thisArgs[i], commandTable.argTable[i]);
+		for (int i = 1; i < commandTable[currIndex].argCount; i++)
+		{
+			thisArgs[i] = (char*) malloc(sizeof(commandTable[currIndex].argTable[i]));
+			strcpy(thisArgs[i], commandTable[currIndex].argTable[i]);
+		}
 		
-		thisArgs[commandTable.argCount] = NULL;
+		thisArgs[commandTable[currIndex].argCount] = NULL;
 
 		if(execv(path, thisArgs) != 0)
 			return 1;
@@ -305,10 +312,10 @@ int initializeCommand()
 		}
 	}
 	else { // arg is absolute path
-		for (int i = 0; i < commandTable.argCount; i++)
-			strcpy(thisArgs[i], commandTable.argTable[i]);
+		for (int i = 0; i < commandTable[currIndex].argCount; i++)
+			strcpy(thisArgs[i], commandTable[currIndex].argTable[i]);
 		
-		thisArgs[commandTable.argCount] = NULL;
+		thisArgs[commandTable[currIndex].argCount] = NULL;
 
 		if(execv(thisArgs[0], thisArgs)  != 0)
 			return 1;
@@ -322,28 +329,56 @@ int initializeCommand()
 }
 int pipeToNext()
 {
-	// pipe here
+	/* IDEA
+
 	int fd[2];
+
 	if (pipe(fd) == -1)
 	{
 		printf("Pipe Failed\n");
                  return 1;
 	}
 
+	pid_t pid = fork();
 	
-	
-
+	if (pid == -1) 
+	{
+		printf("Error in fork");
+		return 1;
+	}
+	else if (pid == 0) // child process
+	{
+		close(fd[1]);
+		dup2(fd[0], 0);
+		
+		initializeCommand(tblIndex);
+		tblIndex++;
+		
+	}
+	else // parent process 
+	{
+		close(fd[0]);
+		dup2(fd[1], 1);
+		
+		// run first command, output goes into next
+		initializeCommand(tblIndex);
+		tblIndex++;
+		
+	}
+	*/
 	return 1;
 }
 
 int inputFileExists(char *word)
 {
-	commandTable.inputFileName = word;
+	inputFileName = word;
+	inputFile = true;
 	return 1;
 }
 int outputFileExists(char *word)
 {
-	commandTable.outputFileName = word;
+	outputFileName = word;
+	outputFile = true;
 	return 1;
 }
 
