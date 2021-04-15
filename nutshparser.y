@@ -54,7 +54,7 @@ pipestream	:
 	| command PIPE command	{initializeCommand(); pipeToNext();} //allows infinitely chained piped commands
 
 command  :
-	command STRING		{printf("Made it here1"); addToArgList($2);}
+	command STRING		{printf(addToArgList($2);}
 	| STRING			{addToArgList($1);}
 
 io_stream	:
@@ -144,7 +144,6 @@ int runSetAlias(char *name, char *word)
 // Command Functions
 int addToArgList(char *word) 
 {
-
 	strcpy(commandTable.argTable[commandTable.argCount], word);	
 	commandTable.argCount++;
 	
