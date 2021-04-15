@@ -69,7 +69,11 @@ void shell_init()
     varIndex++;
 
     // initialize command table
-    commandTable.argCount = 0;
+    tblIndex = 0;
+    for (int i= 0; i < 100; i++)
+    {
+        commandTable[i].argCount = 0;
+    }
 
     inputFile = false;
     outputFile = false;
@@ -106,4 +110,8 @@ void processCommand()
 {
     // builtins handled within parser
 
+    if (inBackground)
+    {
+
+    }
 }
