@@ -37,6 +37,11 @@ ANYCHAR            [)(*&%$#@!`;,\.a-zA-Z0-9'/*_=~ -][)(*&%$#@!`;,\.a-zA-Z0-9'/*_
 <string_condition>[\"]          {BEGIN(INITIAL);}
 
 [ ]		            { }
+ls            {return LS;}
+printenv            {return PRINTENV;}
+setenv              {return SETENV;}
+unsetenv            {return UNSETENV;}
+unalias              {return UNALIAS;}
 "|"	{ return PIPE; }
 "< "	{ return INSTREAM; }
 "2>"	{ return ERRSTREAM; }
@@ -49,6 +54,7 @@ alias		        { return ALIAS; }
 "\n"		        { return END; }
 [\"]                 { BEGIN(string_condition); }
 {CHAR}+              {if(ifAlias(yytext)) {
+		       //printf("yytext is a current alias: %s\n", yytext);
                         printf("yytext: %s\n", yytext);
                         //source: https://www.cs.princeton.edu/~appel/modern/c/software/flex/flex.html
                            char *yycopy = strdup( subAliases(yytext) );
@@ -56,7 +62,7 @@ alias		        { return ALIAS; }
                                unput( yycopy[i] );
                            free( yycopy );
                     } else {
-		       //printf("yytext: %s\n", yytext);
+		        //printf("yytext is not a current alias: %s\n", yytext);
                         yylval.string = strdup(yytext);
                         return STRING;
                     };
