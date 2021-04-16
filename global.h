@@ -41,3 +41,4 @@ bool inputFile;
 bool outputFile;
 bool inBackground;
 
+bool processForked;

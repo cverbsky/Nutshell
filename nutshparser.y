@@ -9,6 +9,7 @@
 #include "global.h"
 #include <dirent.h>
 #include <errno.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -286,58 +287,88 @@ int addToArgList(char *word)
 int initializeCommand(int currIndex)
 {
 	char* thisArgs[100];
-	
-	//printf("Location of %s : %s", commandTable[currIndex].argTable[0], getenv(commandTable[currIndex].argTable[0]));
-
 
 	if (commandTable[currIndex].argTable[0][0] != '/') { // arg is relative path
+		char* path = (char*) malloc(2 + strlen(varTable.word[1]) + strlen(commandTable[currIndex].argTable[0]));
+		strcpy(path, varTable.word[1]);
+		strcat(path, "/");
+		strcat(path, commandTable[currIndex].argTable[0]);
+		printf("%s", path);
 	
-		char* finalPath;
-		char cutpaths[20][100];
-		int currentpath = 0;
-		int currentwordindex = 0;
-
-		for (int i = 0; i < commandTable[currIndex].argCount; i++)
+		thisArgs[0] = (char*) malloc(sizeof(path));
+		strcpy(thisArgs[0], path);
+		for (int i = 1; i < commandTable[currIndex].argCount; i++)
 		{
 			thisArgs[i] = (char*) malloc(sizeof(commandTable[currIndex].argTable[i]));
 			strcpy(thisArgs[i], commandTable[currIndex].argTable[i]);
 		}
+		
 		thisArgs[commandTable[currIndex].argCount] = NULL;
 
-		char* currPATH = getenv("PATH");
-
-		for (int c = 0; c < strlen(varTable.word[3]); c++) //PATH
+		int forked = fork();
+		if(forked == 0)
 		{
-			if (varTable.word[3][c] == ':' || varTable.word[3][c] == '\0')
-   			{
-
-				char* pathName = malloc(sizeof(varTable.word[3]));
-				strcpy(pathName, varTable.word[3] + c + 1);
-      				currentpath++;
-      				char* path = (char*) malloc(2 + strlen(pathName) + sizeof(commandTable[currIndex].argTable[0]));
-				strcpy(path, pathName);
-				strcat(path, "/");
-				strcat(path, commandTable[currIndex].argTable[0]);
-
-				
-				pid_t pid = fork();
-
-				if (pid == 0) // child
+			processForked = true;
+			if(inputFile)
+			{
+				int fd = open(inputFileName, O_RDONLY);
+				if(fd > 0)
 				{
-					if (execv(path, thisArgs) != 0)
-					{
-						continue;
-    					}
+					dup2(fd, 0);
+					close(fd);
 				}
-				else wait(NULL);
-				
+				else
+				{
+					printf("Could not open file %s.\n", inputFileName);
+					free(path);
+					for(int i = 0; i < commandTable[currIndex].argCount; i++)
+						free(thisArgs[i]);
+					exit(1);
+				}
 			}
-  			else cutpaths[currentpath][currentwordindex] = varTable.word[3][c];
-  			currentwordindex++;
-		} 
+			if (outputFile)
+			{
+				int fd = open(outputFileName, O_RDWR);
+				if(fd > 0)
+				{
+					dup2(fd, 1);
+					close(fd);
+				}
+				else
+				{
+					printf("Coult not open file %s.\n", outputFileName);
+					free(path);
+					for(int i = 0; i < commandTable[currIndex].argCount; i++)
+						free(thisArgs[i]);
+					exit(1);
+				}
+			}
 
-                 return 1;
-		
+			if(execv(path, thisArgs) != 0)
+			{
+				free(path);
+				for(int i = 0; i < commandTable[currIndex].argCount; i++)
+					free(thisArgs[i]);
+				exit(1);
+			}
+			else
+			{
+				printf("Unable to execute command.\n");
+				free(path);
+				for(int i = 0; i < commandTable[currIndex].argCount; i++)
+					free(thisArgs[i]);
+				exit(1);
+			}
+		}
+		else if(!outputFile)
+		{
+			while(wait(NULL) > 0);
+			free(path);
+			for(int i = 0; i < commandTable[currIndex].argCount; i++)
+				free(thisArgs[i]);
+			return 1;
+		}
+		else return 1;
 	}
 	else { // arg is absolute path
 		for (int i = 0; i < commandTable[currIndex].argCount; i++)
@@ -345,12 +376,24 @@ int initializeCommand(int currIndex)
 		
 		thisArgs[commandTable[currIndex].argCount] = NULL;
 
-		if(execv(thisArgs[0], thisArgs)  != 0)
-			return 1;
-		else {
-			printf("Unable to execute command.\n");
-                       	return 1;
+		int forked = fork();
+		if(forked == 0)
+		{
+			processForked = true;
+			if(execv(thisArgs[0], thisArgs)  != 0)
+				exit(1);
+			else 
+			{
+				printf("Unable to execute command.\n");
+				exit(1);
+			}
 		}
+		else if(!outputFile)
+		{
+			while(wait(NULL) > 0);
+			return 1;
+		}
+		else return 1;
 	}
 
 	return 1;

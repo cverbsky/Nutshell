@@ -21,11 +21,13 @@ int main()
     if(!isatty(0))
 	{
 		//read in piped input here
-		printf("reading from a pipe\n");
+		//printf("reading from a pipe\n");
 	}
 
     while(1)
     {
+	if(processForked)
+		exit(0);
         printPrompt();
         // command = -1 for ERROR, 0 for BYE and 1 for OK
         int command = getCommand();
@@ -61,7 +63,7 @@ void shell_init()
     strcpy(varTable.var[varIndex], "HOME");
     strcpy(varTable.word[varIndex], cwd);
     varIndex++;
-    strcpy(varTable.var[varIndex], "PROMPT");
+    strcpy(varTable.var[varIndex], "USERNAME");
     strcpy(varTable.word[varIndex], "nutshell");
     varIndex++;
     strcpy(varTable.var[varIndex], "PATH");
@@ -78,12 +80,13 @@ void shell_init()
     inputFile = false;
     outputFile = false;
     inBackground = false;
+	processForked = false;
 
     system("clear");
 }
 void printPrompt()
 {
-    printf("[%s]>> ", varTable.word[2]);;
+    printf("%s@%s: ", varTable.word[2], varTable.word[0]);
 }
 int getCommand()
 {
