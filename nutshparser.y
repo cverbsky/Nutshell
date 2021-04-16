@@ -286,30 +286,58 @@ int addToArgList(char *word)
 int initializeCommand(int currIndex)
 {
 	char* thisArgs[100];
+	
+	//printf("Location of %s : %s", commandTable[currIndex].argTable[0], getenv(commandTable[currIndex].argTable[0]));
+
 
 	if (commandTable[currIndex].argTable[0][0] != '/') { // arg is relative path
-		char* path = (char*) malloc(2 + strlen(varTable.word[1]) + strlen(commandTable[currIndex].argTable[0]));
-		strcpy(path, varTable.word[1]);
-		strcat(path, "/");
-		strcat(path, commandTable[currIndex].argTable[0]);
-		printf("%s", path);
 	
-		thisArgs[0] = (char*) malloc(sizeof(path));
-		strcpy(thisArgs[0], path);
-		for (int i = 1; i < commandTable[currIndex].argCount; i++)
+		char* finalPath;
+		char cutpaths[20][100];
+		int currentpath = 0;
+		int currentwordindex = 0;
+
+		for (int i = 0; i < commandTable[currIndex].argCount; i++)
 		{
 			thisArgs[i] = (char*) malloc(sizeof(commandTable[currIndex].argTable[i]));
 			strcpy(thisArgs[i], commandTable[currIndex].argTable[i]);
 		}
-		
 		thisArgs[commandTable[currIndex].argCount] = NULL;
 
-		if(execv(path, thisArgs) != 0)
-			return 1;
-		else {
-			printf("Unable to execute command.\n");
-                       	return 1;
-		}
+		char* currPATH = getenv("PATH");
+
+		for (int c = 0; c < strlen(varTable.word[3]); c++) //PATH
+		{
+			if (varTable.word[3][c] == ':' || varTable.word[3][c] == '\0')
+   			{
+
+				char* pathName = malloc(sizeof(varTable.word[3]));
+				strcpy(pathName, varTable.word[3] + c + 1);
+      				currentpath++;
+      				char* path = (char*) malloc(2 + strlen(pathName) + sizeof(commandTable[currIndex].argTable[0]));
+				strcpy(path, pathName);
+				strcat(path, "/");
+				strcat(path, commandTable[currIndex].argTable[0]);
+
+				
+				pid_t pid = fork();
+
+				if (pid == 0) // child
+				{
+					if (execv(path, thisArgs) != 0)
+					{
+						continue;
+    					}
+				}
+				else wait(NULL);
+				
+			}
+  			else cutpaths[currentpath][currentwordindex] = varTable.word[3][c];
+  			currentwordindex++;
+		} 
+
+                 return 1;
+		
 	}
 	else { // arg is absolute path
 		for (int i = 0; i < commandTable[currIndex].argCount; i++)
