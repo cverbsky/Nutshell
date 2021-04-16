@@ -304,8 +304,6 @@ int initializeCommand(int currIndex)
 		}
 		thisArgs[commandTable[currIndex].argCount] = NULL;
 
-		char* currPATH = getenv("PATH");
-
 		for (int c = 0; c < strlen(varTable.word[3]); c++) //PATH
 		{
 			if (varTable.word[3][c] == ':' || varTable.word[3][c] == '\0')
@@ -329,7 +327,9 @@ int initializeCommand(int currIndex)
 						continue;
     					}
 				}
-				else wait(NULL);
+				else { // parent
+					if (!inBackground) wait(NULL); // wait for command to finish unless operating in BG
+				}
 				
 			}
   			else cutpaths[currentpath][currentwordindex] = varTable.word[3][c];
