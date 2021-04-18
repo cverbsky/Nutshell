@@ -1,7 +1,4 @@
 %{
-// This is ONLY a demo micro-shell whose purpose is to illustrate the need for and how to handle nested alias substitutions and how to use Flex start conditions.
-// This is to help students learn these specific capabilities, the code is by far not a complete nutshell by any means.
-// Only "alias name word", "cd word", and "bye" run.
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -27,6 +24,8 @@ int runUnsetEnv(char* name);
 int initializeCommand(int currIndex); 
 int pipeToNext(void); 
 int addToArgList(char *word);
+int inputFromFile(void);
+int outputToFile(void);
 int inputFileExists(char *word);
 int outputFileExists(char *word);
 int errorFileRedirect(char *word);
@@ -74,13 +73,13 @@ command  :
 	;
 
 io_stream	:
-	input_stream output_stream error_stream		{}
-	| input_stream	output_stream			{}
-	| input_stream error_stream			{} 
-	| output_stream error_stream			{}
-	| input_stream					{}
-	| output_stream					{}
-	| error_stream					{}
+	input_stream output_stream error_stream		{inputFromFile(); outputToFile(); /*error handled in error redirect*/}
+	| input_stream	output_stream			{inputFromFile(); outputToFile(); }
+	| input_stream error_stream			{inputFromFile(); /*error handled in error redirect*/} 
+	| output_stream error_stream			{outputToFile(); /*error handled in error redirect*/}
+	| input_stream					{inputFromFile();}
+	| output_stream					{outputToFile();}
+	| error_stream					{/*error handled in error redirect*/}
 
 input_stream	:
 	INSTREAM STRING		{inputFileExists($2);} 
@@ -162,7 +161,7 @@ int runAlias(void)
 	for(int c = 0; c < 128; c++)
 	{
 		if(aliasTable.name[c][0] != '\0')
-			printf("%s: %s\n", aliasTable.name[c], aliasTable.word[c]);
+			printf("%s = %s\n", aliasTable.name[c], aliasTable.word[c]);
 	}
 	return 1;
 }
@@ -193,7 +192,8 @@ int runLS(char* arg)
 	//char filename[1025];
 	if((dir = opendir(arg)) == NULL)
 	{
-		fprintf(stderr, "error opening directory %s", arg);
+		initializeCommand(tblIndex); 
+		tblIndex++;
 		return 1;
 	}
 	else
@@ -233,6 +233,7 @@ int runSetEnv(char* name, char* word)
 			return 1;
 		}
 	}
+
 	strcpy(varTable.var[varIndex], name);
 	strcpy(varTable.word[varIndex], word);
 	varIndex++;
@@ -286,9 +287,6 @@ int addToArgList(char *word)
 int initializeCommand(int currIndex)
 {
 	char* thisArgs[100];
-	
-	//printf("Location of %s : %s", commandTable[currIndex].argTable[0], getenv(commandTable[currIndex].argTable[0]));
-
 
 	if (commandTable[currIndex].argTable[0][0] != '/') { // arg is relative path
 	
@@ -324,7 +322,7 @@ int initializeCommand(int currIndex)
 				{
 					if (execv(path, thisArgs) != 0)
 					{
-						continue;
+						return 1;
     					}
 				}
 				else { // parent
@@ -397,6 +395,24 @@ int pipeToNext()
 	return 1;
 }
 
+int inputFromFile(void)
+{
+	if (inputFile) { // a double check I think
+		int inputFile = open(inputFileName, O_RDONLY);
+		dup2(0, inputFile); //inputFile redirected to stdin
+	}
+	return 1;
+}
+int outputToFile(void)
+{
+	if (outputFile) { // a double check I think
+		int recievingFile = open(outputFileName, O_WRONLY);
+		dup2(recievingFile, 1); //stdout redirected to recieving file
+	
+	}
+	return 1;
+}
+
 int inputFileExists(char *word)
 {
 	inputFileName = word;
@@ -413,7 +429,7 @@ int outputFileExists(char *word)
 int errorFileRedirect(char *word)
 {
 	int file = open(word, O_WRONLY);
-         dup2(file, 2);
+        dup2(file, 2);
 	return 1;
 }
 int errorRedirect()
